@@ -1,0 +1,26 @@
+#!/bin/bash
+
+
+for i in /etc/nginx/upstreams.d/*.conf; do
+  filename=$(basename "$i")
+  filename="${filename%.*}"
+
+  echo
+  echo $filename
+  echo "============="
+
+  for j in `cat /etc/nginx/upstreams.d/$filename.conf | grep server | tr -s ' ' | cut -f2 -d' ' | tr -d ';'`; do
+    server="${j%:*}"
+    port="${j##*:}"
+    echo -ne "\t$j...."
+
+    nc -z $server $port
+    if [ $? -eq 0 ]; then
+      echo "ok"
+    else
+      echo "failure"
+    fi
+  done
+done
+
+echo

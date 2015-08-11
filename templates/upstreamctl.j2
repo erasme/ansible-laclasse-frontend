@@ -1,0 +1,45 @@
+#!/bin/bash
+if [ -n "$1" -a -n "$2" -a -n "$3" ]; then
+  action="$1";
+  group="$2"
+  target="$3";
+  force="$4"
+else
+  echo "Usage: $0 <add|rm> <group> <server:port>"
+  exit 0;
+fi;
+# Path to nginx binary
+# BIN="/usr/sbin/nginx"
+# Path to upstream config file
+CONF="/etc/nginx/upstreams.d/$2.conf"
+
+SERVERS=`cat $CONF 2> /dev/null | grep server`
+
+output="upstream $group {"
+
+
+if [ $action == "add" ]; then
+  echo -e "$output" > $CONF
+  if $( echo $SERVERS | grep --quiet $target ); then
+    # Brute forcing server again in config
+    echo "warning: Server is already enabled."
+    if [ $force == "--force" ]; then 
+      SERVERS=`cat $CONF | grep server | grep -v --quiet $target`
+      SERVERS="$SERVERS\n\tserver $target;"
+      echo "upstream server $target added to $group group"
+    fi
+  else 
+    SERVERS="$SERVERS\n\tserver $target;"
+    echo "upstream server $target added to $group group"
+  fi
+  echo -e "$SERVERS" >> $CONF
+  echo "}" >> $CONF
+elif [ $action == "rm" ]; then 
+  sed -i "/$target/d" $CONF
+else 
+  echo "unknown action : $1"
+  exit 1
+fi
+
+# # Check changes:
+# $BIN -t

@@ -1,0 +1,107 @@
+
+- name: Creates locations directory 
+  file: 
+    path: /etc/nginx/locations.d
+    state: directory
+
+- name: Removes rp_filter
+  template:
+    src: "../templates/sysctl.conf.j2"
+    dest: "/etc/sysctl.d/70-remove-rpfilter.conf"
+  notify: Apply sysctl
+
+- name: Deploys certificate
+  template:
+    src: "../templates/certificate_chain.cer.j2"
+    dest: "/etc/ssl/certs/{{ laclasse_main_domain }}.chain.cer"
+  notify: Reload nginx
+
+- name: Deploys certificate key
+  template:
+    src: "../templates/certificate_key.j2"
+    dest: "/etc/ssl/private/{{ laclasse_main_domain }}.key"
+  notify: Reload nginx
+
+- name: Removes default config
+  file: 
+    path: "{{item}}"
+    state: absent
+  with_items:
+    - /etc/nginx/sites-available/default
+    - /etc/nginx/sites-enabled/default
+  notify: Reload nginx
+
+- name: Creates TLD config directory
+  file:
+    path: "/etc/nginx/top.d/"
+    state: directory
+  notify: Reload nginx
+
+# - name: Deploys nginx main config
+#   template:
+#     src: "../templates/nginx.conf.j2"
+#     dest: "/etc/nginx/nginx.conf"
+#   notify: Reload nginx
+
+- name: Deploys nginx 50x file
+  template:
+    src: "../templates/50x.html.j2"
+    dest: "/usr/share/nginx/html/50x.html"
+
+- name: Deploys front-end nginx SMTP/POP/IMAP config
+  template:
+    src: "../templates/mail.conf.j2"
+    dest: "/etc/nginx/top.d/mail.conf"
+  notify: Reload nginx
+
+- name: Deploys nginx front-end vhost config
+  template:
+    src: "../templates/frontend.conf.j2"
+    dest: "/etc/nginx/sites-available/frontend.conf"
+  notify: Reload nginx
+
+- name: Adds symlink
+  file:
+    src: /etc/nginx/sites-available/frontend.conf
+    dest: /etc/nginx/sites-enabled/frontend
+    state: link
+    force: yes
+  notify: Reload nginx
+
+- name: Creates locations configuration directory
+  file: 
+    path: /etc/nginx/locations.d/
+    state: directory
+  notify: Reload nginx
+
+- name: Creates upstreams configuration directory
+  file: 
+    path: /etc/nginx/upstreams.d/
+    state: directory
+  notify: Reload nginx
+
+- name: Deploys upstream management script
+  template:
+    src: "../templates/upstreamctl.j2"
+    dest: "/usr/local/bin/upstreamctl"
+    mode: 755
+
+- name: Deploys upstream check script
+  template:
+    src: "../templates/upstreamcheck.j2"
+    dest: "/usr/local/bin/upstreamcheck"
+    mode: 755
+
+- name: Check if firewall is opened
+  shell: iptables-save
+  register: needs_iptables
+  when: firewall_rules_file is defined  
+  changed_when: needs_iptables.stdout.find("laclasse-mail-proxy-rules") == -1
+
+- name: Open firewall
+  shell: iptables -A TCP_IN -p tcp -m tcp -m multiport --dports smtp,submission,pop3,pop3s,imap,imaps,465 -j ACCEPT -m comment --comment laclasse-mail-proxy-rules
+  when: needs_iptables | changed
+
+- name: Saves firewall
+  shell: iptables-save > {{ firewall.rules_file }}
+  when: needs_iptables | changed

@@ -1,0 +1,15 @@
+- include: check_vars.yml tags=laclasse,laclasse:frontend,check
+- include: frontend.yml tags=laclasse,laclasse:frontend,nginx
+
+- name: Send notification message via Slack
+  local_action:
+    module: slack
+    domain: "{{ laclasse_slack.host }}"
+    token: "{{ laclasse_slack.token }}"
+    msg: "front-end successfully deployed on {{ inventory_hostname }} :thumbsup:"
+    channel: "{{ laclasse_slack.channel }}"
+  when: skipnotif is not defined
+  ignore_errors: true
+  tags:
+    - laclasse
+    - laclasse:frontend

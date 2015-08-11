@@ -1,0 +1,75 @@
+mail {
+  auth_http http://{{ laclasse_main_domain }}/{{ laclasse_services['annuaire']['path'] }}/nginx?api_key={{ laclasse_annuaire_secret_key }};
+
+  pop3_capabilities "TOP" "USER";
+  imap_capabilities "IMAP4rev1" "UIDPLUS";
+  smtp_capabilities "AUTH LOGIN";
+      
+  #access_log /var/log/nginx/mail_access.log;
+  #error_log /var/log/nginx/mail_error.log debug;
+  
+  smtp_auth login plain;
+
+  #ssl                        on;
+  ssl_prefer_server_ciphers  on;
+  ssl_ciphers                HIGH:!ADH:!MD5:@STRENGTH;
+  ssl_session_cache          shared:TLSSL:16m;
+  ssl_session_timeout        10m;
+  ssl_certificate      /etc/ssl/certs/{{ laclasse_main_domain }}.chain.cer;
+  ssl_certificate_key  /etc/ssl/private/{{ laclasse_main_domain }}.key;
+  ssl_protocols        SSLv3 TLSv1 TLSv1.1 TLSv1.2;
+  
+  server {
+    listen     *:110;
+    protocol   pop3;
+    proxy      on;
+    #access_log /var/log/nginx/pop_access.log;
+    #error_log /var/log/nginx/pop_error.log debug;
+  }
+
+  server {
+    ssl        on;
+    listen     *:995;
+    protocol   pop3;
+    proxy      on;
+  }
+ 
+  server {
+    listen     *:143;
+    protocol   imap;
+    proxy      on;
+  }
+
+  server {
+    ssl       on;
+    listen    *:993;
+    protocol  imap;
+    proxy     on;
+  }
+
+  server {
+    listen     *:25;
+    protocol   smtp;
+    proxy      on;
+    xclient    off;
+    smtp_auth  none;
+  }
+
+  server {
+     listen     *:587;
+     protocol   smtp;
+     proxy      on;
+     xclient    off;
+     smtp_auth  none;
+  }
+
+  server {
+     ssl        on;
+     listen     *:465;
+     protocol   smtp;
+     proxy      on;
+     xclient    off;
+     smtp_auth  none;
+   }
+}
+
