@@ -1,13 +1,13 @@
 mail {
-  auth_http http://{{ laclasse_main_domain }}/{{ laclasse_services['annuaire']['path'] }}/nginx?api_key={{ laclasse_annuaire_secret_key }};
+  auth_http http://{{ laclasse_mail_auth_host | default(laclasse_main_domain) }}/{{ laclasse_services.annuaire.path }}/sso/nginx?api_key={{ laclasse_annuaire_secret_key }};
 
   pop3_capabilities "TOP" "USER";
   imap_capabilities "IMAP4rev1" "UIDPLUS";
   smtp_capabilities "AUTH LOGIN";
-      
+
   #access_log /var/log/nginx/mail_access.log;
   #error_log /var/log/nginx/mail_error.log debug;
-  
+
   smtp_auth login plain;
 
   #ssl                        on;
